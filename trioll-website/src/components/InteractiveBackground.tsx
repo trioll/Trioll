@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import securityStore from '../utils/securityStore';
 
 interface Particle {
   x: number;
@@ -8,6 +9,8 @@ interface Particle {
   size: number;
   depth: number;
   color: string;
+  redColor: string; // Red variant for security breach
+  blackColor: string; // Normal color
   blur: number;
   vx: number;
   vy: number;
@@ -19,6 +22,22 @@ const InteractiveBackground: React.FC = () => {
   const mouseRef = useRef({ x: 0, y: 0 });
   const particlesRef = useRef<Particle[]>([]);
   const requestRef = useRef<number | null>(null);
+  const [securityBreached, setSecurityBreached] = useState(false);
+  
+  // Subscribe to security breach status
+  useEffect(() => {
+    // Get initial state
+    setSecurityBreached(securityStore.getSecurityBreached());
+    
+    // Subscribe to changes
+    const unsubscribe = securityStore.subscribe((breached) => {
+      setSecurityBreached(breached);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -65,6 +84,14 @@ const InteractiveBackground: React.FC = () => {
         'rgba(60, 60, 60, 0.6)',
         'rgba(80, 80, 80, 0.5)'
       ];
+      
+      const redColors = [
+        'rgba(220, 0, 0, 0.9)',
+        'rgba(200, 0, 0, 0.8)',
+        'rgba(180, 0, 0, 0.7)',
+        'rgba(160, 0, 0, 0.6)',
+        'rgba(140, 0, 0, 0.5)'
+      ];
 
       for (let i = 0; i < particlesCount; i++) {
         // Depth gives 3D effect - closer particles are larger, faster, and less blurry
@@ -85,7 +112,10 @@ const InteractiveBackground: React.FC = () => {
           y: Math.random() * height,
           size,
           depth,
+          // Store both colors to allow for transitions
           color: blackColors[Math.floor(Math.random() * blackColors.length)],
+          redColor: redColors[Math.floor(Math.random() * redColors.length)],
+          blackColor: blackColors[Math.floor(Math.random() * blackColors.length)],
           blur,
           vx: (Math.random() - 0.5) * 0.3 * depth, // Faster if closer (higher depth value)
           vy: (Math.random() - 0.5) * 0.3 * depth,
@@ -103,7 +133,7 @@ const InteractiveBackground: React.FC = () => {
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
 
-      // Create white-to-gray gradient background
+      // Always keep the original white-to-gray gradient for background
       const gradient = ctx.createLinearGradient(0, 0, width, height);
       gradient.addColorStop(0, '#ffffff'); // Pure white
       gradient.addColorStop(0.5, '#f5f5f5'); // Very light gray
@@ -184,7 +214,19 @@ const InteractiveBackground: React.FC = () => {
         
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = particle.color;
+        
+        // Use red variant during security breach, normal color otherwise
+        if (securityBreached) {
+          ctx.fillStyle = particle.redColor;
+          
+          // During breach, add a subtle pulsing effect
+          const pulse = Math.sin(Date.now() * 0.003) * 0.5 + 0.5;
+          ctx.shadowColor = 'rgba(255, 0, 0, ' + (0.1 + pulse * 0.2) + ')';
+          ctx.shadowBlur = particle.blur + pulse * 3;
+        } else {
+          ctx.fillStyle = particle.color;
+        }
+        
         ctx.fill();
         
         // Reset shadow/blur for next particle
@@ -210,7 +252,7 @@ const InteractiveBackground: React.FC = () => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, []);
+  }, [securityBreached]);
 
   return (
     <canvas
