@@ -120,12 +120,12 @@ const GameCarousel: React.FC = () => {
   const renderGameContent = (game: typeof games[0]) => {
     if (game.id === 3 && game.component) {
       const GameComponent = game.component;
-      return <GameComponent />;
+      return <div className="w-full h-full"><GameComponent /></div>;
     }
 
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <div className={`w-full h-40 mb-4 bg-gradient-to-br ${game.color} rounded-md flex items-center justify-center`}>
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <div className={`w-full h-40 mb-4 bg-gradient-to-br ${game.color} rounded-md flex items-center justify-center`} style={{ objectFit: 'cover' }}>
           <span className="text-white/90 font-bold text-2xl">{game.title.substring(0, 1)}</span>
         </div>
         <h3 className="text-xl font-bold mb-2 text-white">{game.title}</h3>
@@ -136,7 +136,7 @@ const GameCarousel: React.FC = () => {
 
   return (
     <div
-      className="w-full h-full relative overflow-hidden bg-black/20 rounded-[36px]"
+      className="w-full h-full relative overflow-hidden bg-black rounded-[32px]"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -154,14 +154,14 @@ const GameCarousel: React.FC = () => {
           animate="center"
           exit="exit"
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="absolute top-0 left-0 w-full h-full p-4"
+          className="absolute top-0 left-0 w-full h-full"
         >
           {renderGameContent(games[currentIndex])}
         </motion.div>
       </AnimatePresence>
 
       {/* Navigation dots */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10">
         {games.map((_, index) => (
           <div
             key={index}

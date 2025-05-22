@@ -18,6 +18,8 @@ const IPhoneFrame: React.FC = () => {
   const [showParticles, setShowParticles] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
+  const [isRotated, setIsRotated] = useState(false);
+  const [showIframe, setShowIframe] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
   
   // For 3D tilt effect
@@ -47,6 +49,16 @@ const IPhoneFrame: React.FC = () => {
           setTimeout(() => {
             setIsLocked(false);
             setFailedAttempts(0); // Reset counter on success
+            
+            // After unlocking, start the rotation and iframe transition
+            setTimeout(() => {
+              setIsRotated(true);
+              
+              // Show iframe after rotation is complete
+              setTimeout(() => {
+                setShowIframe(true);
+              }, 1200); // Increased delay to match the longer animation
+            }, 300);
           }, 300);
         } else {
           const newFailedAttempts = failedAttempts + 1;
@@ -81,6 +93,11 @@ const IPhoneFrame: React.FC = () => {
   }, [enteredPin, securityLockdown]);
 
   const handleLock = useCallback(() => {
+    // Reset iframe and rotation first
+    setShowIframe(false);
+    setIsRotated(false);
+    
+    // Then reset other states
     setIsLocked(true);
     setEnteredPin("");
     setSecurityLockdown(false);
@@ -104,9 +121,9 @@ const IPhoneFrame: React.FC = () => {
     updateTime();
     const interval = setInterval(updateTime, 1000);
     
-    // Mouse move handler for 3D effect
+    // Mouse move handler for 3D effect - only active when phone is not rotated
     const handleMouseMove = (e: MouseEvent) => {
-      if (!phoneRef.current) return;
+      if (!phoneRef.current || isRotated) return; // Skip tilt effect when rotated
       
       const rect = phoneRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -150,22 +167,30 @@ const IPhoneFrame: React.FC = () => {
         ref={phoneRef}
         className="relative rounded-[40px] border-8 border-black shadow-lg overflow-hidden
                   w-full aspect-[9/19.5] bg-black max-w-[250px]"
+        animate={{
+          rotate: isRotated ? 90 : 0,
+          scale: isRotated ? 1.5 : 1
+        }}
+        transition={{
+          duration: 1.2,
+          ease: [0.34, 1.56, 0.64, 1], // Custom spring-like easing
+        }}
         style={{
           transformStyle: 'preserve-3d',
           perspective: 800,
-          rotateX: springRotateX,
-          rotateY: springRotateY,
+          // Only apply cursor-based tilt when not rotated
+          rotateX: !isRotated ? springRotateX : 0,
+          rotateY: !isRotated ? springRotateY : 0,
           // Add subtle shadow shift on movement
           boxShadow: '0 10px 30px -15px rgba(0,0,0,0.7)',
-          transition: 'transform 0.3s ease'
         }}
-        whileHover={{ scale: 1.03 }}
+        whileHover={{ scale: isRotated ? 1.5 : 1.03 }} // Keep scale consistent with animation state
       >
         {/* Dynamic Island */}
         <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-1/3 h-5 bg-black rounded-full z-10"></div>
         
         {/* Screen with content */}
-        <div className="relative w-full h-full overflow-hidden rounded-[32px] bg-black z-0">
+        <div className="relative w-full h-full overflow-hidden rounded-[32px] bg-black z-0" style={{ objectFit: 'cover' }}>
           {/* Lock screen or home screen based on isLocked state */}
           <AnimatePresence mode="wait">
             {isLocked ? (
@@ -318,7 +343,46 @@ const IPhoneFrame: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <GameCarousel />
+                {showIframe ? (
+                  <div className="w-full h-full overflow-hidden">
+                    <motion.div 
+                      className="relative w-full h-full"
+                      animate={{
+                        rotate: isRotated ? -90 : 0
+                      }}
+                      transition={{
+                        duration: 1.2,
+                        ease: [0.34, 1.56, 0.64, 1], // Custom spring-like easing
+                        delay: 0.1
+                      }}
+                      style={{
+                        transformOrigin: 'center center',
+                      }}
+                    >
+                      <iframe 
+                        src="https://grant-glaze-26957295.figma.site/"
+                        style={{
+                          width: isRotated ? '190%' : '100%', // Adjusted for better fit
+                          height: isRotated ? '90%' : '100%', // Slightly reduced height for better fit
+                          border: 'none',
+                          borderRadius: '24px', // Rounded corners to match iPhone frame
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          aspectRatio: isRotated ? '19.5/9' : '9/19.5',
+                          transformOrigin: 'center center',
+                          scale: isRotated ? 0.95 : 1, // Slightly scale down in landscape to ensure visibility
+                          objectFit: 'cover',
+                        }}
+                      />
+                    </motion.div>
+                  </div>
+                ) : (
+                  <div className="w-full h-full overflow-hidden">
+                    <GameCarousel />
+                  </div>
+                )}
                 
                 {/* Lock button */}
                 <div 
@@ -341,7 +405,7 @@ const IPhoneFrame: React.FC = () => {
       
       {/* Instruction text */}
       <div className="mt-2 text-center text-white/70 text-xs">
-        <p>{isLocked ? "Enter passcode: 477235" : "Swipe to preview games"}</p>
+        <p>{isLocked ? "Enter passcode: 477235" : (showIframe ? "Viewing Figma prototype" : "Swipe to preview games")}</p>
       </div>
       
       {/* Styles for text glow effects */}
