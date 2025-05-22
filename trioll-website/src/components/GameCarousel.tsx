@@ -253,4 +253,48 @@ const GameCarousel: React.FC = () => {
         className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
         aria-label="Next game"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="9,18 15,12 9,6"></polyline>
+        </svg>
+      </button>
+
+      {/* Navigation dots */}
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-10">
+        {games.map((_, index) => (
+          <motion.button
+            key={index}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              index === currentIndex
+                ? "bg-white scale-125"
+                : "bg-white/40 hover:bg-white/60"
+            }`}
+            onClick={() => goToSlide(index)}
+            whileHover={{ scale: index === currentIndex ? 1.25 : 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            aria-label={`Go to ${games[index].title}`}
+          />
+        ))}
+      </div>
+
+      {/* Progress indicator */}
+      {isAutoPlaying && (
+        <div className="absolute top-2 left-2 right-2 h-1 bg-white/20 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-white/60 rounded-full"
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 4, ease: "linear" }}
+            key={currentIndex}
+          />
+        </div>
+      )}
+
+      {/* Game counter */}
+      <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs font-medium">
+        {currentIndex + 1} / {games.length}
+      </div>
+    </div>
+  );
+};
+
+export default GameCarousel;
