@@ -1,433 +1,256 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from "framer-motion";
-import Image from "next/image";
-import GameCarousel from "@/components/GameCarousel";
-import PixelExplosion from "@/components/PixelExplosion";
-import InteractiveParticles from "@/components/InteractiveParticles";
-import securityStore from '../utils/securityStore';
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import SimpleRacer from "@/components/SimpleRacer";
 
-const IPhoneFrame: React.FC = () => {
-  const [isLocked, setIsLocked] = useState(true);
-  const [enteredPin, setEnteredPin] = useState("");
-  const [incorrectAttempt, setIncorrectAttempt] = useState(false);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [securityLockdown, setSecurityLockdown] = useState(false);
-  const [pixelExplosion, setPixelExplosion] = useState(false);
-  const [showParticles, setShowParticles] = useState(false);
-  const [currentTime, setCurrentTime] = useState("");
-  const [currentDate, setCurrentDate] = useState("");
-  const [isRotated, setIsRotated] = useState(false);
-  const [showIframe, setShowIframe] = useState(false);
-  const phoneRef = useRef<HTMLDivElement>(null);
-  
-  // For 3D tilt effect
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  
-  // Transform mouse motion into rotation (with dampening)
-  const rotateX = useTransform(mouseY, [-300, 300], [5, -5]);
-  const rotateY = useTransform(mouseX, [-300, 300], [-5, 5]);
-  
-  // Add spring physics for smoother, more natural movement
-  const springRotateX = useSpring(rotateX, { stiffness: 100, damping: 30 });
-  const springRotateY = useSpring(rotateY, { stiffness: 100, damping: 30 });
-  
-  const correctPin = "477235";
-  
-  // Define handlers with useCallback to prevent unnecessary re-renders
-  const handlePinInput = useCallback((digit: string) => {
-    if (securityLockdown) return; // Prevent input during lockdown
-    
-    if (enteredPin.length < 6) {
-      const newPin = enteredPin + digit;
-      setEnteredPin(newPin);
-      
-      if (newPin.length === 6) {
-        if (newPin === correctPin) {
-          setTimeout(() => {
-            setIsLocked(false);
-            setFailedAttempts(0); // Reset counter on success
-            
-            // After unlocking, start the rotation and iframe transition
-            setTimeout(() => {
-              setIsRotated(true);
-              
-              // Show iframe after rotation is complete
-              setTimeout(() => {
-                setShowIframe(true);
-              }, 1200); // Increased delay to match the longer animation
-            }, 300);
-          }, 300);
-        } else {
-          const newFailedAttempts = failedAttempts + 1;
-          setFailedAttempts(newFailedAttempts);
-          setIncorrectAttempt(true);
-          
-          if (newFailedAttempts >= 6) {
-            // Trigger security lockdown after 6 failed attempts
-            setTimeout(() => {
-              setSecurityLockdown(true);
-              securityStore.setSecurityBreached(true);
-              
-              // Start pixel explosion animation after 2 seconds
-              setTimeout(() => {
-                setPixelExplosion(true);
-              }, 2000);
-            }, 500);
-          } else {
-            setTimeout(() => {
-              setEnteredPin("");
-              setIncorrectAttempt(false);
-            }, 500);
-          }
-        }
-      }
-    }
-  }, [enteredPin, correctPin, failedAttempts, securityLockdown]);
+// Sample game data with better descriptions
+const games = [
+  {
+    id: 1,
+    title: "Space Explorer",
+    color: "from-blue-600 to-indigo-900",
+    description: "Navigate through asteroid fields and discover new worlds in this thrilling space adventure.",
+    icon: "🚀",
+  },
+  {
+    id: 2,
+    title: "Fantasy Quest",
+    color: "from-purple-600 to-pink-900",
+    description: "Embark on an epic journey through magical realms filled with mythical creatures.",
+    icon: "⚔️",
+  },
+  {
+    id: 3,
+    title: "Simple Racer",
+    color: "from-red-500 to-amber-600",
+    description: "Experience high-speed racing action with intuitive controls and dynamic gameplay.",
+    component: SimpleRacer,
+    icon: "🏎️",
+  },
+  {
+    id: 4,
+    title: "Puzzle Master",
+    color: "from-emerald-500 to-teal-900",
+    description: "Challenge your mind with increasingly complex puzzles and brain-bending challenges.",
+    icon: "🧩",
+  },
+  {
+    id: 5,
+    title: "Ocean Depths",
+    color: "from-cyan-500 to-blue-800",
+    description: "Dive deep into mysterious underwater worlds and uncover hidden treasures.",
+    icon: "🌊",
+  },
+];
 
-  const handleDelete = useCallback(() => {
-    if (securityLockdown) return; // Prevent input during lockdown
-    setEnteredPin(enteredPin.slice(0, -1));
-  }, [enteredPin, securityLockdown]);
+const GameCarousel: React.FC = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [dragConstraints, setDragConstraints] = useState({ left: 0, right: 0 });
 
-  const handleLock = useCallback(() => {
-    // Reset iframe and rotation first
-    setShowIframe(false);
-    setIsRotated(false);
-    
-    // Then reset other states
-    setIsLocked(true);
-    setEnteredPin("");
-    setSecurityLockdown(false);
-    setPixelExplosion(false);
-    setShowParticles(false);
-    setFailedAttempts(0);
+  // Auto-advance carousel
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+
+    const timer = setTimeout(() => {
+      handleNext();
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, isAutoPlaying]);
+
+  // Pause auto-play when user interacts
+  const pauseAutoPlay = useCallback(() => {
+    setIsAutoPlaying(false);
+    setTimeout(() => setIsAutoPlaying(true), 8000); // Resume after 8 seconds
   }, []);
 
-  useEffect(() => {
-    // Update time every second
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  const handleNext = useCallback(() => {
+    setDirection(1);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % games.length);
+  }, []);
+
+  const handlePrev = useCallback(() => {
+    setDirection(-1);
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + games.length) % games.length);
+  }, []);
+
+  const goToSlide = useCallback((index: number) => {
+    pauseAutoPlay();
+    setDirection(index > currentIndex ? 1 : -1);
+    setCurrentIndex(index);
+  }, [currentIndex, pauseAutoPlay]);
+
+  // Improved swipe detection
+  const handleDragEnd = useCallback((event: any, info: any) => {
+    const threshold = 50;
+    pauseAutoPlay();
+
+    if (info.offset.x > threshold) {
+      handlePrev();
+    } else if (info.offset.x < -threshold) {
+      handleNext();
+    }
+  }, [handleNext, handlePrev, pauseAutoPlay]);
+
+  // Animation variants
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.8,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.8,
+    }),
+  };
+
+  const renderGameContent = (game: typeof games[0]) => {
+    if (game.id === 3 && game.component) {
+      const GameComponent = game.component;
+      return (
+        <div className="w-full h-full">
+          <GameComponent />
+        </div>
       );
-      setCurrentDate(
-        now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
-      );
-    };
-    
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    
-    // Mouse move handler for 3D effect - only active when phone is not rotated
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!phoneRef.current || isRotated) return; // Skip tilt effect when rotated
-      
-      const rect = phoneRef.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      
-      // Calculate distance from center (for dampening effect near center)
-      const distanceX = e.clientX - centerX;
-      const distanceY = e.clientY - centerY;
-      
-      // Apply dampening based on distance
-      mouseX.set(distanceX);
-      mouseY.set(distanceY);
-    };
-    
-    // Keyboard handler for number inputs when lock screen is active
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isLocked) return;
-      
-      if (e.key >= '0' && e.key <= '9') {
-        handlePinInput(e.key);
-      } else if (e.key === 'Backspace') {
-        handleDelete();
-      }
-    };
-    
-    // Add mousemove and keydown event listeners to document
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('keydown', handleKeyDown);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [mouseX, mouseY, isLocked, enteredPin, handleDelete, handlePinInput]);
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+        {/* Game preview area */}
+        <motion.div 
+          className={`w-full h-32 mb-4 bg-gradient-to-br ${game.color} rounded-xl flex items-center justify-center relative overflow-hidden shadow-lg`}
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          {/* Decorative background pattern */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-2 left-2 w-4 h-4 bg-white/30 rounded-full"></div>
+            <div className="absolute top-6 right-4 w-2 h-2 bg-white/40 rounded-full"></div>
+            <div className="absolute bottom-4 left-6 w-3 h-3 bg-white/25 rounded-full"></div>
+            <div className="absolute bottom-2 right-2 w-6 h-6 bg-white/20 rounded-full"></div>
+          </div>
+          
+          {/* Game icon */}
+          <motion.div
+            className="text-4xl filter drop-shadow-lg"
+            animate={{ 
+              rotate: [0, 5, -5, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            {game.icon}
+          </motion.div>
+          
+          {/* Floating particles */}
+          <div className="absolute inset-0 pointer-events-none">
+            {[...Array(3)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white/60 rounded-full"
+                style={{
+                  left: `${20 + i * 30}%`,
+                  top: `${30 + i * 20}%`,
+                }}
+                animate={{
+                  y: [-10, -20, -10],
+                  opacity: [0.3, 0.8, 0.3],
+                }}
+                transition={{
+                  duration: 2 + i * 0.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Game info */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <h3 className="text-lg font-bold mb-2 text-white">{game.title}</h3>
+          <p className="text-sm text-white/80 leading-relaxed px-2">{game.description}</p>
+        </motion.div>
+
+        {/* Try Now button */}
+        <motion.button
+          className="mt-4 px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium border border-white/30"
+          whileHover={{ 
+            scale: 1.05, 
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            borderColor: 'rgba(255,255,255,0.5)'
+          }}
+          whileTap={{ scale: 0.95 }}
+          onClick={pauseAutoPlay}
+        >
+          Try Now
+        </motion.button>
+      </div>
+    );
+  };
 
   return (
-    <div className="relative max-w-[220px] md:max-w-[250px] mx-auto">
-      {/* iPhone frame with 3D tilt effect */}
-      <motion.div 
-        ref={phoneRef}
-        className="relative rounded-[40px] border-8 border-black shadow-lg overflow-hidden
-                  w-full aspect-[9/19.5] bg-black max-w-[250px]"
-        animate={{
-          rotate: isRotated ? 90 : 0,
-          scale: isRotated ? 1.5 : 1
-        }}
-        transition={{
-          duration: 1.2,
-          ease: [0.34, 1.56, 0.64, 1], // Custom spring-like easing
-        }}
-        style={{
-          transformStyle: 'preserve-3d',
-          perspective: 800,
-          // Only apply cursor-based tilt when not rotated
-          rotateX: !isRotated ? springRotateX : 0,
-          rotateY: !isRotated ? springRotateY : 0,
-          // Add subtle shadow shift on movement
-          boxShadow: '0 10px 30px -15px rgba(0,0,0,0.7)',
-        }}
-        whileHover={{ scale: isRotated ? 1.5 : 1.03 }} // Keep scale consistent with animation state
-      >
-        {/* Dynamic Island */}
-        <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-1/3 h-5 bg-black rounded-full z-10"></div>
-        
-        {/* Screen with content */}
-        <div className="relative w-full h-full overflow-hidden rounded-[32px] bg-black z-0" style={{ objectFit: 'cover' }}>
-          {/* Lock screen or home screen based on isLocked state */}
-          <AnimatePresence mode="wait">
-            {isLocked ? (
-              <motion.div
-                key="lockscreen"
-                initial={{ opacity: 0 }}
-                animate={securityLockdown ? {
-                  opacity: 1,
-                  backgroundColor: showParticles ? 
-                    'rgb(0, 0, 0)' : 
-                    ['rgba(0,0,0,1)', 'rgba(255,0,0,0.85)', 'rgba(0,0,0,1)']
-                } : { 
-                  opacity: 1 
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                  backgroundColor: { 
-                    repeat: securityLockdown && !showParticles ? Infinity : 0, 
-                    repeatType: "mirror",
-                    duration: 0.5
-                  } 
-                }}
-                className="absolute inset-0 flex flex-col items-center justify-start pt-8 px-3"
-                style={{
-                  backgroundImage: 'url(/lockscreen-bg.jpg)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              >
-                {/* Lock screen content - only shown when not in security lockdown */}
-                {!securityLockdown && (
-                  <div className="flex flex-col items-center">
-                    <div className="text-white text-3xl font-light mt-2">{currentTime}</div>
-                    <div className="text-white/80 text-base mb-2">{currentDate}</div>
-                  </div>
-                )}
-                
-                {/* Middle content - TRIOLL Logo */}
-                <div className="flex flex-col items-center space-y-2 px-3 mt-1">
-                  <div className="flex justify-center w-full relative">
-                    {/* Show inverted logo when in security lockdown but before pixel explosion */}
-                    {securityLockdown && !pixelExplosion ? (
-                      <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{
-                          scale: [1.2, 1.5, 1.4, 1.6],
-                          filter: [
-                            'drop-shadow(0 0 4px rgba(255,0,0,0.5))', 
-                            'drop-shadow(0 0 12px rgba(255,0,0,0.9))',
-                            'drop-shadow(0 0 8px rgba(255,0,0,0.7))',
-                            'drop-shadow(0 0 16px rgba(255,0,0,1.0))'
-                          ],
-                          x: [0, -2, 3, -3, 0, 1, -1, 0],
-                          y: [0, 1, -2, 3, -1, 0, 2, 0]
-                        }}
-                        transition={{ 
-                          repeat: Infinity, 
-                          repeatType: "mirror",
-                          duration: 3,
-                          ease: "easeInOut"
-                        }}
-                        className="relative"
-                      >
-                        <Image
-                          src="/Trioll_Logo_White.png"
-                          alt="TRIOLL"
-                          width={200}
-                          height={100}
-                          className="object-contain invert brightness-0"
-                        />
-                      </motion.div>
-                    ) : (
-                      !securityLockdown && (
-                        <Image
-                          src="/Trioll_Logo_White.png"
-                          alt="TRIOLL"
-                          width={150}
-                          height={75}
-                          className="object-contain"
-                        />
-                      )
-                    )}
-                  </div>
-                  
-                  {/* Passcode entry - only shown when not in security lockdown */}
-                  {!securityLockdown && (
-                    <>
-                      <div className="text-white/90 text-sm mb-2">Enter Passcode</div>
-                      
-                      {/* Pin dots */}
-                      <motion.div 
-                        animate={incorrectAttempt ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                        transition={{ duration: 0.5 }}
-                        className="flex gap-2 mb-3"
-                      >
-                        {[...Array(6)].map((_, i) => (
-                          <div 
-                            key={i} 
-                            className={`w-3 h-3 rounded-full ${i < enteredPin.length ? 'bg-white' : 'bg-white/30'}`}
-                          />
-                        ))}
-                      </motion.div>
-                      
-                      {/* Keypad */}
-                      <div className="grid grid-cols-3 gap-2 w-full max-w-[170px]">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((digit, i) => (
-                          <motion.div 
-                            key={i}
-                            whileTap={{ scale: 0.9 }}
-                            className={`
-                              ${digit === '' ? 'invisible' : ''}
-                              ${digit === 'del' ? 'text-sm' : 'text-lg'}
-                              h-10 w-10 rounded-full bg-white/20 backdrop-blur-md 
-                              flex items-center justify-center text-white font-light
-                              ${typeof digit === 'number' ? 'cursor-pointer' : ''}
-                              active:outline-none focus:outline-none
-                            `}
-                            style={{
-                              WebkitTapHighlightColor: 'transparent',
-                              touchAction: 'manipulation'
-                            }}
-                            onClick={() => {
-                              if (typeof digit === 'number') handlePinInput(digit.toString());
-                              else if (digit === 'del') handleDelete();
-                            }}
-                          >
-                            {digit === 'del' ? '⌫' : digit}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {/* Special Animation Components */}
-                <PixelExplosion 
-                  active={pixelExplosion} 
-                  onExplosionComplete={() => {
-                    // Start interactive particles after explosion completes
-                    setShowParticles(true);
-                  }}
-                />
-                <InteractiveParticles active={showParticles} />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="gamecarousel"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full h-full"
-              >
-                {showIframe ? (
-                  <div className="w-full h-full overflow-hidden">
-                    <motion.div 
-                      className="relative w-full h-full"
-                      animate={{
-                        rotate: isRotated ? -90 : 0
-                      }}
-                      transition={{
-                        duration: 1.2,
-                        ease: [0.34, 1.56, 0.64, 1], // Custom spring-like easing
-                        delay: 0.1
-                      }}
-                      style={{
-                        transformOrigin: 'center center',
-                      }}
-                    >
-                      <iframe 
-                        src="https://grant-glaze-26957295.figma.site/"
-                        style={{
-                          width: isRotated ? '190%' : '100%', // Adjusted for better fit
-                          height: isRotated ? '90%' : '100%', // Slightly reduced height for better fit
-                          border: 'none',
-                          borderRadius: '24px', // Rounded corners to match iPhone frame
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          aspectRatio: isRotated ? '19.5/9' : '9/19.5',
-                          transformOrigin: 'center center',
-                          scale: isRotated ? 0.95 : 1, // Slightly scale down in landscape to ensure visibility
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </motion.div>
-                  </div>
-                ) : (
-                  <div className="w-full h-full overflow-hidden">
-                    <GameCarousel />
-                  </div>
-                )}
-                
-                {/* Lock button */}
-                <div 
-                  className="absolute top-2 right-2 bg-white/20 rounded-full p-1 cursor-pointer"
-                  onClick={handleLock}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        
-        {/* Home indicator */}
-        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1/4 h-1 bg-gray-600 rounded-full"></div>
-      </motion.div>
-      
-      {/* Instruction text */}
-      <div className="mt-2 text-center text-white/70 text-xs">
-        <p>{isLocked ? "Enter passcode: 477235" : (showIframe ? "Viewing Figma prototype" : "Swipe to preview games")}</p>
+    <div className="w-full h-full relative overflow-hidden bg-black rounded-[32px]">
+      {/* Main carousel area */}
+      <div className="relative w-full h-full">
+        <AnimatePresence custom={direction} mode="wait">
+          <motion.div
+            key={currentIndex}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ 
+              type: "spring", 
+              stiffness: 300, 
+              damping: 30,
+              duration: 0.5
+            }}
+            drag="x"
+            dragConstraints={dragConstraints}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
+            className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+            style={{ touchAction: 'pan-y' }}
+          >
+            {renderGameContent(games[currentIndex])}
+          </motion.div>
+        </AnimatePresence>
       </div>
-      
-      {/* Styles for text glow effects */}
-      <style jsx global>{`
-        .text-shadow-white {
-          text-shadow: 0 0 3px rgba(255, 255, 255, 0.8),
-                      0 0 5px rgba(255, 255, 255, 0.6),
-                      0 0 8px rgba(255, 255, 255, 0.4);
-        }
-        
-        .shadow-glow {
-          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5),
-                      0 0 15px rgba(255, 255, 255, 0.3);
-        }
-        
-        @keyframes subtle-glow {
-          0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.9)) drop-shadow(0 0 8px rgba(255,255,255,0.6)); }
-          50% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)) drop-shadow(0 0 12px rgba(255,255,255,0.7)); }
-        }
-      `}</style>
-    </div>
-  );
-};
 
-export default IPhoneFrame;
+      {/* Navigation arrows */}
+      <button
+        onClick={() => { handlePrev(); pauseAutoPlay(); }}
+        className="absolute left-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
+        aria-label="Previous game"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15,18 9,12 15,6"></polyline>
+        </svg>
+      </button>
+
+      <button
+        onClick={() => { handleNext(); pauseAutoPlay(); }}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
+        aria-label="Next game"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor
