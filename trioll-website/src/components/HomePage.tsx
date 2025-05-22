@@ -2,194 +2,132 @@
 
 import Image from "next/image";
 import { motion, useAnimate } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import InteractiveBackground from "@/components/InteractiveBackground";
 import ContactForm from "@/components/ContactForm";
 import IPhoneFrame from "@/components/IPhoneFrame";
 
-// This WordWithGlow component is replaced by direct motion.span usage
-// but keeping the code commented for reference
-/*
-interface WordWithGlowProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-const WordWithGlow = ({ children, className = "" }: WordWithGlowProps) => {
-  // Define hover animation
-  const hoverAnimation = {
-    scale: 1.1,
-    y: -2,
-    textShadow: "0 0 5px rgba(255, 255, 255, 0.7), 0 0 10px rgba(255, 255, 255, 0.5), 0 0 15px rgba(255, 255, 255, 0.3)"
-  };
-
-  // Define classes for normal and highlighted states
-  const normalClass = `${className} text-shadow-subtle inline-block`;  
-  
-  return (
-    <motion.span
-      className={normalClass}
-      whileHover={hoverAnimation}
-      transition={{ 
-        type: "spring", 
-        stiffness: 400, 
-        damping: 10,
-        textShadow: { type: "tween", duration: 0.2 }
-      }}
-    >
-      {children}
-    </motion.span>
-  );
-};
-*/
-
-// Function to generate CSS color values for the glow animation
-const generateColorWheelValues = () => {
-  const colors = [];
-  
-  // Start with blue
-  colors.push('rgba(0, 100, 255, 0.7)');
-  
-  // Generate colors across the wheel (hue values from 240 to 600 degrees)
-  for (let i = 240; i <= 600; i += 20) {
-    const h = i % 360;
-    colors.push(`hsla(${h}, 100%, 50%, 0.7)`);
-  }
-  
-  // Return to blue to complete the cycle
-  colors.push('rgba(0, 100, 255, 0.7)');
-  
-  return colors;
-};
-
 const HomePage = () => {
-  
-  // State to track if animation should start
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  
-  // Refs for animations
   const [scope, animate] = useAnimate();
-  const [headerRef] = useAnimate();
   const [glow1Ref, animateGlow1] = useAnimate();
   const [glow2Ref, animateGlow2] = useAnimate();
   const [glow3Ref, animateGlow3] = useAnimate();
   
-  // Colors for the glow animation
-  const colorWheelValues = generateColorWheelValues();
-  
-  // Start animations immediately 
+  // Start animations after component mount
   useEffect(() => {
-    // Set up initial state
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setShouldAnimate(true);
     }, 800);
     
-    return () => {};
+    return () => clearTimeout(timer);
   }, []);
   
-  // Start the floating glow animation when shouldAnimate is true
+  // Floating glow animation effect
+  const startGlowAnimations = useCallback(() => {
+    if (!shouldAnimate || !glow1Ref.current || !glow2Ref.current || !glow3Ref.current) return;
+    
+    // Enhance text visibility with subtle shadow
+    animate(scope.current, {
+      textShadow: "0 0 1px rgba(0, 0, 0, 0.6), 0 0 2px rgba(0, 0, 0, 0.3)"
+    }, { duration: 0.5 });
+    
+    // Glow 1 - Logo to text movement
+    animateGlow1(glow1Ref.current, {
+      x: ['calc(100% - 80px)', '60%', '20%', '10%', '30%', '70%', 'calc(100% - 80px)'],
+      y: ['25%', '15%', '35%', '45%', '25%', '15%', '25%'],
+      scale: [1, 1.3, 0.8, 1.4, 0.9, 1.2, 1],
+      filter: [
+        'blur(12px) grayscale(1) brightness(0.8)',
+        'blur(18px) grayscale(1) brightness(1.3)',
+        'blur(22px) grayscale(1) brightness(0.9)',
+        'blur(14px) grayscale(1) brightness(1.2)',
+        'blur(16px) grayscale(1) brightness(1.0)',
+      ],
+      opacity: [0.6, 0.4, 0.7, 0.5, 0.6, 0.4, 0.6]
+    }, {
+      duration: 16,
+      repeat: Infinity,
+      ease: "easeInOut",
+    });
+    
+    // Glow 2 - Text to logo movement
+    animateGlow2(glow2Ref.current, {
+      x: ['15%', '40%', '75%', '85%', '55%', '25%', '15%'],
+      y: ['30%', '55%', '20%', '40%', '65%', '30%', '30%'],
+      scale: [0.8, 1.2, 0.7, 1.4, 0.9, 1.3, 0.8],
+      filter: [
+        'blur(16px) grayscale(1) brightness(0.9)',
+        'blur(12px) grayscale(1) brightness(1.4)',
+        'blur(20px) grayscale(1) brightness(0.8)',
+        'blur(14px) grayscale(1) brightness(1.3)',
+        'blur(18px) grayscale(1) brightness(1.0)',
+      ],
+      opacity: [0.5, 0.7, 0.4, 0.6, 0.5, 0.7, 0.5]
+    }, {
+      duration: 20,
+      repeat: Infinity,
+      ease: "easeInOut",
+    });
+    
+    // Glow 3 - Background tagline glow
+    animateGlow3(glow3Ref.current, {
+      scale: [1, 1.2, 0.9, 1.15, 1],
+      filter: [
+        'blur(20px) grayscale(1) opacity(0.5)',
+        'blur(15px) grayscale(1) opacity(0.7)',
+        'blur(25px) grayscale(1) opacity(0.4)',
+        'blur(12px) grayscale(1) opacity(0.6)',
+        'blur(20px) grayscale(1) opacity(0.5)',
+      ],
+    }, {
+      duration: 14,
+      repeat: Infinity,
+      ease: "easeInOut",
+    });
+  }, [shouldAnimate, animate, animateGlow1, animateGlow2, animateGlow3, scope, glow1Ref, glow2Ref, glow3Ref]);
+  
   useEffect(() => {
-    if (shouldAnimate && glow1Ref.current && glow2Ref.current && glow3Ref.current) {
-      // Make the text a bit more visible by giving it a subtle shadow
-      animate(scope.current, {
-        textShadow: "0 0 1px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.3)"
-      }, { duration: 0.5 });
-      
-      // Animate glow 1 - from logo to TRIOLL text
-      animateGlow1(glow1Ref.current, {
-        x: ['calc(100% - 100px)', '50%', '10%', '0%', '20%', '50%', 'calc(100% - 100px)'],
-        y: ['30%', '10%', '40%', '50%', '20%', '10%', '30%'],
-        scale: [1, 1.2, 0.9, 1.3, 0.8, 1.1, 1],
-        filter: [
-          'blur(15px) grayscale(1)',
-          'blur(20px) grayscale(1) brightness(1.2)',
-          'blur(25px) grayscale(1) brightness(0.9)',
-          'blur(15px) grayscale(1) brightness(1.1)',
-          'blur(20px) grayscale(1)',
-        ],
-        opacity: [0.7, 0.5, 0.8, 0.6, 0.7, 0.5, 0.7]
-      }, {
-        duration: 15,
-        repeat: Infinity,
-        ease: "easeInOut",
-      });
-      
-      // Animate glow 2 - from TRIOLL text to logo
-      animateGlow2(glow2Ref.current, {
-        x: ['10%', '30%', '70%', '90%', '60%', '40%', '10%'],
-        y: ['20%', '50%', '10%', '30%', '60%', '20%', '20%'],
-        scale: [0.9, 1.1, 0.8, 1.3, 0.9, 1.2, 0.9],
-        filter: [
-          'blur(20px) grayscale(1) brightness(0.8)',
-          'blur(15px) grayscale(1) brightness(1.3)',
-          'blur(25px) grayscale(1)',
-          'blur(20px) grayscale(1) brightness(1.2)',
-          'blur(15px) grayscale(1) brightness(0.9)',
-        ],
-        opacity: [0.6, 0.8, 0.5, 0.7, 0.6, 0.8, 0.6]
-      }, {
-        duration: 18,
-        repeat: Infinity,
-        ease: "easeInOut",
-      });
-      
-      // Animate glow 3 - behind the tagline text
-      animateGlow3(glow3Ref.current, {
-        scale: [1, 1.15, 0.95, 1.1, 1],
-        filter: [
-          'blur(25px) grayscale(1) opacity(0.6)',
-          'blur(20px) grayscale(1) opacity(0.8)',
-          'blur(30px) grayscale(1) opacity(0.5)',
-          'blur(15px) grayscale(1) opacity(0.7)',
-          'blur(25px) grayscale(1) opacity(0.6)',
-        ],
-      }, {
-        duration: 12,
-        repeat: Infinity,
-        ease: "easeInOut",
-      });
-    }
-  }, [shouldAnimate, animate, animateGlow1, animateGlow2, animateGlow3, colorWheelValues, scope, glow1Ref, glow2Ref, glow3Ref]);
+    startGlowAnimations();
+  }, [startGlowAnimations]);
   
   return (
     <>
       <InteractiveBackground />
       
       <div className="min-h-screen flex flex-col items-center justify-center p-6 relative z-10">
-        {/* Floating glow effects that aren't cut off by container */}
-        <div className="fixed top-0 left-0 right-0 h-32 overflow-visible z-30 pointer-events-none">
-          {/* Glow 1 - floating from logo to TRIOLL text */}
+        {/* Floating glow effects */}
+        <div className="fixed top-0 left-0 right-0 h-40 overflow-visible z-30 pointer-events-none">
+          {/* Glow orbs with improved styling */}
           <div 
             ref={glow1Ref}
-            className="absolute w-[300px] h-[80px] rounded-full mix-blend-screen pointer-events-none"
+            className="absolute w-[280px] h-[70px] rounded-full mix-blend-screen pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, rgba(180, 180, 180, 0.7) 0%, rgba(180, 180, 180, 0.1) 70%)',
-              filter: 'blur(15px)',
-              top: '20px',
-              right: '80px',
+              background: 'radial-gradient(ellipse, rgba(200, 200, 200, 0.6) 0%, rgba(200, 200, 200, 0.1) 70%)',
+              filter: 'blur(12px)',
+              top: '30px',
+              right: '60px',
             }}
           />
           
-          {/* Glow 2 - floating from TRIOLL text to logo */}
           <div 
             ref={glow2Ref}
-            className="absolute w-[250px] h-[70px] rounded-full mix-blend-screen pointer-events-none"
+            className="absolute w-[240px] h-[60px] rounded-full mix-blend-screen pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, rgba(220, 220, 220, 0.6) 0%, rgba(220, 220, 220, 0.1) 70%)',
-              filter: 'blur(20px)',
-              top: '25px',
-              left: '50px',
+              background: 'radial-gradient(ellipse, rgba(240, 240, 240, 0.5) 0%, rgba(240, 240, 240, 0.1) 70%)',
+              filter: 'blur(16px)',
+              top: '35px',
+              left: '40px',
             }}
           />
           
-          {/* Glow 3 - hovering behind the tagline text */}
           <div 
             ref={glow3Ref}
-            className="absolute w-[400px] h-[90px] rounded-full mix-blend-screen pointer-events-none"
+            className="absolute w-[360px] h-[80px] rounded-full mix-blend-screen pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, rgba(200, 200, 200, 0.5) 0%, rgba(200, 200, 200, 0.1) 70%)',
-              filter: 'blur(25px)',
-              top: '15px',
+              background: 'radial-gradient(ellipse, rgba(220, 220, 220, 0.4) 0%, rgba(220, 220, 220, 0.1) 70%)',
+              filter: 'blur(20px)',
+              top: '25px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: -1
@@ -197,72 +135,77 @@ const HomePage = () => {
           />
         </div>
         
-        {/* Header section with TRIOLL text, tagline, and logo */}
-        <div ref={headerRef} className="absolute top-0 left-0 right-0 flex justify-between items-center p-6 z-20">
-          {/* TRIOLL title aligned to top left */}
+        {/* Header section */}
+        <motion.header 
+          className="absolute top-0 left-0 right-0 flex justify-between items-center p-6 z-20"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          {/* TRIOLL title */}
           <div className="flex flex-col items-start justify-center">
             <motion.h1 
-              className="text-3xl md:text-4xl font-bold tracking-wider cursor-pointer mb-1"
+              className="text-3xl md:text-4xl font-bold tracking-wider cursor-pointer mb-1 select-none"
               whileHover={{ 
                 scale: 1.05, 
-                textShadow: "0 0 5px rgba(255, 255, 255, 0.8), 0 0 10px rgba(255, 255, 255, 0.6), 0 0 15px rgba(255, 255, 255, 0.4), 0 0 20px rgba(255, 255, 255, 0.2)"
+                textShadow: "0 0 8px rgba(255, 255, 255, 0.9), 0 0 16px rgba(255, 255, 255, 0.6), 0 0 24px rgba(255, 255, 255, 0.4)"
               }}
               whileTap={{ scale: 0.95 }}
               animate={{ 
                 textShadow: [
-                  "0 0 1px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.3), 0 0 3px rgba(0, 0, 0, 0.2)", 
-                  "0 0 2px rgba(0, 0, 0, 0.5), 0 0 3px rgba(0, 0, 0, 0.4), 0 0 4px rgba(0, 0, 0, 0.3)",
-                  "0 0 1px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.3), 0 0 3px rgba(0, 0, 0, 0.2)"
+                  "0 0 1px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.3)", 
+                  "0 0 2px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 0, 0, 0.4)",
+                  "0 0 1px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.3)"
                 ]
               }}
               transition={{ 
-                textShadow: { repeat: Infinity, duration: 2 },
-                scale: { type: "spring", stiffness: 400, damping: 10 }
+                textShadow: { repeat: Infinity, duration: 3, ease: "easeInOut" },
+                scale: { type: "spring", stiffness: 400, damping: 12 }
               }}
             >
-              <span className="relative z-10 text-black">
-                TRIOLL
-              </span>
+              <span className="relative z-10 text-black">TRIOLL</span>
             </motion.h1>
           </div>
           
-          {/* Tagline centered in the middle */}
+          {/* Tagline - centered */}
           <div className="flex-1 flex items-center justify-center">
             <div 
               ref={scope}
-              className="text-base md:text-lg text-black/90 font-medium tracking-wide flex space-x-1 blur-[0.3px]"
+              className="text-base md:text-lg text-black/90 font-medium tracking-wide flex flex-wrap justify-center gap-x-2 gap-y-1"
             >
               {['Level', 'Up', 'Your', 'Game', 'Discovery'].map((word, index) => (
                 <motion.span 
                   key={index} 
-                  className="inline-block"
+                  className="inline-block select-none"
                   whileHover={{
                     scale: 1.1,
-                    y: -2,
+                    y: -3,
+                    textShadow: "0 0 6px rgba(255, 255, 255, 0.8)"
                   }}
                   transition={{ 
                     type: "spring", 
                     stiffness: 400, 
-                    damping: 10,
+                    damping: 12,
                   }}
                 >
-                  {word}{index < 4 ? '' : '.'}
+                  {word}{index === 4 ? '.' : ''}
                 </motion.span>
               ))}
             </div>
           </div>
           
-          {/* Logo aligned to top right */}
+          {/* Logo */}
           <motion.div
             whileHover={{ 
               scale: 1.05,
-              filter: "drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.5))"
+              filter: "drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 16px rgba(255, 255, 255, 0.5))"
             }}
             whileTap={{ scale: 0.95 }}
             transition={{ 
-              filter: { type: "tween", duration: 0.2 },
-              scale: { type: "spring", stiffness: 400, damping: 10 }
+              filter: { type: "tween", duration: 0.3 },
+              scale: { type: "spring", stiffness: 400, damping: 12 }
             }}
+            className="cursor-pointer"
           >
             <Image
               src="/Trioll_Logo_Black.png"
@@ -273,40 +216,52 @@ const HomePage = () => {
               className="object-contain"
             />
           </motion.div>
-        </div>
+        </motion.header>
         
-        <div className="container mx-auto flex flex-col items-center max-w-6xl mt-20 pt-10">
-          
+        {/* Main content */}
+        <main className="container mx-auto flex flex-col items-center max-w-6xl mt-20 pt-10">
           {/* iPhone Game Preview */}
-          <div className="w-full my-16">
+          <section className="w-full my-16">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
+              initial={{ opacity: 0, y: 40, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                delay: 0.4, 
+                duration: 1,
+                type: "spring",
+                stiffness: 100,
+                damping: 20
+              }}
             >
               <IPhoneFrame />
             </motion.div>
-          </div>
+          </section>
           
-          {/* Contact Form - Added spacer to ensure scroll triggers */}
-          <div className="w-full max-w-lg mb-60">
-            <div className="h-96"></div>
+          {/* Contact Section */}
+          <section className="w-full max-w-lg mb-60">
+            <div className="h-96"></div> {/* Spacer for scroll trigger */}
             <ContactForm />
-          </div>
-        </div>
+          </section>
+        </main>
         
-        <footer className="mt-16 text-black/60 text-sm text-center">
+        {/* Footer */}
+        <motion.footer 
+          className="mt-16 text-black/60 text-sm text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 0.5 }}
+        >
           © {new Date().getFullYear()} TRIOLL. All rights reserved.
-        </footer>
+        </motion.footer>
       </div>
       
-      {/* Global styles for text shadows on light background */}
+      {/* Global styles for better text rendering */}
       <style jsx global>{`
         .text-shadow-glow-dark {
           font-weight: 700;
-          text-shadow: 0 0 1px rgba(0, 0, 0, 0.4),
-                      0 0 2px rgba(0, 0, 0, 0.3),
-                      0 0 3px rgba(0, 0, 0, 0.2);
+          text-shadow: 0 0 1px rgba(0, 0, 0, 0.5),
+                      0 0 3px rgba(0, 0, 0, 0.3),
+                      0 0 5px rgba(0, 0, 0, 0.2);
         }
         
         .text-shadow-subtle {
@@ -324,11 +279,23 @@ const HomePage = () => {
           color: rgba(0, 0, 0, 1);
         }
 
-        .white-glow-hover:hover {
-          text-shadow: 0 0 5px rgba(255, 255, 255, 0.7),
-                      0 0 10px rgba(255, 255, 255, 0.5),
-                      0 0 15px rgba(255, 255, 255, 0.3);
-          transition: text-shadow 0.2s ease;
+        /* Improved selection styles */
+        ::selection {
+          background-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Better text rendering */
+        * {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Prevent text selection on interactive elements */
+        .select-none {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
         }
       `}</style>
     </>
